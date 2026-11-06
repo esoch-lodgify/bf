@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Black Friday banner — local test harness</title>
+<style>
+  body{margin:0;padding:5px;font:16px/1.6 system-ui,sans-serif;color:#141313}
+  .wrap{max-width:780px;margin:0 auto;padding:48px 24px 120vh}
+  h1{font-size:26px;margin:0 0 4px}
+  h2{font-size:14px;text-transform:uppercase;letter-spacing:.12em;color:#6B6763;margin:32px 0 10px}
+  p{color:#6B6763} code{background:#F4F1EA;padding:2px 6px;border-radius:4px;font-size:14px}
+  a{color:#141313} ul{padding-left:20px} li{margin:6px 0}
+  .note{background:#FFFBCB;border-radius:12px;padding:16px 20px;margin:22px 0}
+
+  /* ==========================================================================
+     THE VISIBILITY CONTRACT — the only CSS the script depends on.
+     These four rules are NOT in the script. Webflow must provide them, or a
+     custom-code block like this one. Everything else (.bfbanner_*) is styled
+     by Webflow and is deliberately absent here, so the banner will look
+     unstyled on this page. That is expected: this harness tests behaviour.
+     ========================================================================== */
+  #bf-banner{
+    position:fixed; left:0; right:0; bottom:0; z-index:99999;
+    transform:translateY(100%); opacity:0;
+    transition:transform 350ms ease, opacity 350ms ease;
+    background:#141313; color:#fff; padding:12px;
+  }
+  #bf-banner.is-visible{ transform:translateY(0); opacity:1 }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Black Friday banner — local test harness</h1>
+  <p>Behaviour only. The banner is intentionally unstyled here.</p>
+
+  <div class="note">
+    This page supplies the four <code>#bf-banner</code> rules the script needs, and nothing
+    else. On the live site Webflow provides the <code>.bfbanner_*</code> styling — check there
+    that <code>#bf-banner</code> itself is positioned, since that id is not a Webflow class.
+  </div>
+
+  <h2>Locale</h2>
+  <ul>
+    <li><a href="?">no parameters</a> — English</li>
+    <li><a href="?lang=es">?lang=es</a> · <a href="?lang=de">?lang=de</a> ·
+        <a href="?lang=fr">?lang=fr</a> · <a href="?lang=it">?lang=it</a> ·
+        <a href="?lang=pt">?lang=pt</a></li>
+    <li><a href="?lang=ja">?lang=ja</a> — unknown, falls back to English</li>
+  </ul>
+
+  <h2>Display</h2>
+  <ul>
+    <li><a href="?reset=1">?reset=1</a> — clear the dismissal and show it again</li>
+    <li><a href="?bfshow=1">?bfshow=1</a> — show it even if dismissed or past the end date</li>
+  </ul>
+
+  <p>Close it, then reload: it stays gone for 24 hours. Scroll — it should stay pinned
+  to the bottom and overlay the content rather than push it.</p>
+</div>
+
+<script src="bf-2026.js" defer></script>
+</body>
+</html>
