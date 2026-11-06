@@ -21,8 +21,8 @@
      unstyled on this page. That is expected: this harness tests behaviour.
      ========================================================================== */
   #bf-banner{
-    position:fixed; left:0; right:0; bottom:0; z-index:99999;
-    transform:translateY(100%); opacity:0;
+    position:fixed; left:0; right:0; top:0; z-index:99999;
+    transform:translateY(-100%); opacity:0;
     transition:transform 350ms ease, opacity 350ms ease;
     background:#141313; color:#fff; padding:12px;
   }
@@ -56,7 +56,7 @@
   </ul>
 
   <p>Close it, then reload: it stays gone for 24 hours. Scroll — it should stay pinned
-  to the bottom and overlay the content rather than push it.</p>
+  to the top and overlay the content rather than push it.</p>
 </div>
 
 <script src="bf-2026.js" defer></script>

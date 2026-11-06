@@ -1,6 +1,6 @@
 /*!
  * ==========================================================================
- * LODGIFY — Black Friday 2026 sticky bottom banner
+ * LODGIFY — Black Friday 2026 sticky top banner
  * ==========================================================================
  * One embeddable file. No CSS of any kind is injected: every class name in
  * the markup is left exactly as the design file had it, and Webflow styles
@@ -13,7 +13,7 @@
  *   The 22 .bfbanner_* / .sticky-banner_close-btn classes come straight from
  *   the site, so Webflow already has them. #bf-banner does NOT — it is an id
  *   the standalone file invented, and it carried the fixed-to-bottom
- *   positioning and the slide-up animation. Webflow needs those four rules or
+ *   positioning and the slide-down animation. Webflow needs those four rules or
  *   the banner renders inline in the page flow. See VISIBILITY CONTRACT below.
  *
  * VISIBILITY CONTRACT
@@ -21,8 +21,8 @@
  *   exactly as the design file did. Webflow (or a small custom-code block)
  *   has to supply:
  *
- *     #bf-banner{position:fixed;left:0;right:0;bottom:0;z-index:99999;
- *                transform:translateY(100%);opacity:0;
+ *     #bf-banner{position:fixed;left:0;right:0;top:0;z-index:99999;
+ *                transform:translateY(-100%);opacity:0;
  *                transition:transform 350ms ease,opacity 350ms ease}
  *     #bf-banner.is-visible{transform:translateY(0);opacity:1}
  *
@@ -31,7 +31,7 @@
  *
  * WHAT IS NOT HERE
  *   No exit-intent popup, no geo lookup, no injected stylesheet, no top-bar
- *   push. This is a bottom banner: it overlays, it does not displace.
+ *   push. This is a top banner: it overlays, it does not displace.
  *
  * QA HELPERS (query string)
  *   ?lang=es       force a locale
@@ -70,7 +70,7 @@
     // hooks and nothing else about how the banner looks.
     visibleClass: 'is-visible',
     hideDelay: 380,                    // ms, must outlast the CSS transition
-    showDelay: 0,                      // ms before it slides up on load
+    showDelay: 0,                      // ms before it slides down on load
 
     defaultLocale: 'en'
   };
