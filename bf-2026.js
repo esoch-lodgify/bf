@@ -13,7 +13,7 @@
  *   The 22 .bfbanner_* / .sticky-banner_close-btn classes come straight from
  *   the site, so Webflow already has them. #bf-banner does NOT — it is an id
  *   the standalone file invented, and it carried the fixed-to-bottom
- *   positioning and the slide-down animation. Webflow needs those four rules or
+ *   positioning and the slide-up animation. Webflow needs those four rules or
  *   the banner renders inline in the page flow. See VISIBILITY CONTRACT below.
  *
  * VISIBILITY CONTRACT
@@ -21,17 +21,29 @@
  *   exactly as the design file did. Webflow (or a small custom-code block)
  *   has to supply:
  *
+ *   Overlaying the top (slides down over the page):
  *     #bf-banner{position:fixed;left:0;right:0;top:0;z-index:99999;
  *                transform:translateY(-100%);opacity:0;
  *                transition:transform 350ms ease,opacity 350ms ease}
  *     #bf-banner.is-visible{transform:translateY(0);opacity:1}
  *
+ *   Or in normal flow, pushing the page down — give it no position at all and
+ *   the script handles the rest (see FIXED NAVBAR below).
+ *
  *   The script injects the banner already hidden, so there is no flash before
  *   it decides — but with no rules at all it will simply sit in the flow.
  *
+ * FIXED NAVBAR
+ *   The banner is inserted as the FIRST child of <body>, so if it sits in
+ *   normal flow the page content moves down by itself. What does not move is
+ *   a fixed or sticky navbar pinned to the top — it would cover the banner.
+ *   The script detects which case applies by reading the banner's own
+ *   computed position, and only offsets the navbar when the banner is in
+ *   flow. An overlaying banner needs no offset and gets none.
+ *   CONFIG.offsetFixedHeader forces the decision either way.
+ *
  * WHAT IS NOT HERE
- *   No exit-intent popup, no geo lookup, no injected stylesheet, no top-bar
- *   push. This is a top banner: it overlays, it does not displace.
+ *   No exit-intent popup, no geo lookup, no injected stylesheet.
  *
  * QA HELPERS (query string)
  *   ?lang=es       force a locale
@@ -70,7 +82,13 @@
     // hooks and nothing else about how the banner looks.
     visibleClass: 'is-visible',
     hideDelay: 380,                    // ms, must outlast the CSS transition
-    showDelay: 0,                      // ms before it slides down on load
+    showDelay: 0,                      // ms before it slides up on load
+
+    // A fixed or sticky navbar pinned to the top would sit over an in-flow
+    // banner. 'auto' reads the banner's computed position and only offsets
+    // when it is actually in the flow. true / false force it.
+    offsetFixedHeader: 'auto',
+    fixedHeaderSelector: '',           // set if auto-detection misses the nav
 
     defaultLocale: 'en'
   };
@@ -251,7 +269,82 @@
   var FORCED = qs.get('bfshow') === '1';
 
   /* =====================================================================
-     7 · Render
+     7 · Pushing a fixed navbar out of the way
+
+     Only relevant when the banner sits in normal flow. Anything pinned to the
+     top of the viewport gets its `top` offset by the banner's height,
+     shrinking back to 0 as the banner scrolls away so no gap is left behind.
+     ===================================================================== */
+  function findPinned(banner) {
+    var nodes = [];
+    try {
+      if (CONFIG.fixedHeaderSelector) {
+        nodes = document.querySelectorAll(CONFIG.fixedHeaderSelector);
+      } else if (document.elementsFromPoint) {
+        nodes = document.elementsFromPoint(Math.round(window.innerWidth / 2), 1) || [];
+      }
+    } catch (e) { return []; }
+    var out = [];
+    [].forEach.call(nodes, function (el) {
+      if (!el || el === document.body || el === document.documentElement) return;
+      if (banner && (el === banner || banner.contains(el))) return;
+      var cs;
+      try { cs = window.getComputedStyle(el); } catch (e) { return; }
+      if (!cs || (cs.position !== 'fixed' && cs.position !== 'sticky')) return;
+      if (Math.abs(parseFloat(cs.top) || 0) > 1) return;
+      if (out.indexOf(el) === -1) out.push(el);
+    });
+    return out;
+  }
+
+  function bannerIsInFlow(banner) {
+    if (CONFIG.offsetFixedHeader === true) return true;
+    if (CONFIG.offsetFixedHeader === false) return false;
+    var cs;
+    try { cs = window.getComputedStyle(banner); } catch (e) { return false; }
+    if (!cs) return false;
+    return cs.position === 'static' || cs.position === 'relative';
+  }
+
+  function pushPinned(banner, pinned) {
+    if (!pinned.length) return null;
+    var prev = pinned.map(function (el) { return el.style.top; });
+    var height = 0, frame = null;
+    var raf = window.requestAnimationFrame
+      ? function (fn) { return window.requestAnimationFrame(fn); }
+      : function (fn) { return setTimeout(fn, 16); };
+    var unraf = window.cancelAnimationFrame
+      ? function (id) { window.cancelAnimationFrame(id); }
+      : function (id) { clearTimeout(id); };
+
+    function apply() {
+      frame = null;
+      var offset = Math.max(0, height - (window.scrollY || 0));
+      pinned.forEach(function (el) { el.style.top = offset + 'px'; });
+    }
+    function schedule() { if (frame === null) frame = raf(apply); }
+    function measure() {
+      height = (banner.style.display === 'none') ? 0 : banner.getBoundingClientRect().height;
+      schedule();
+    }
+
+    measure();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', measure);
+    var ro = ('ResizeObserver' in window) ? new ResizeObserver(measure) : null;
+    if (ro) ro.observe(banner);
+
+    return function restore() {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', measure);
+      if (ro) ro.disconnect();
+      if (frame !== null) unraf(frame);
+      pinned.forEach(function (el, i) { el.style.top = prev[i]; });
+    };
+  }
+
+  /* =====================================================================
+     8 · Render
      ===================================================================== */
   function mount() {
     var host = document.createElement('div');
@@ -259,9 +352,10 @@
     var banner = host.firstElementChild;
     if (!banner) return;
 
-    // injected already hidden, so it never flashes before the checks below
+    // injected already hidden, so it never flashes before the checks below;
+    // first child of <body> so an in-flow banner pushes the page down
     banner.style.display = 'none';
-    document.body.appendChild(banner);
+    document.body.insertBefore(banner, document.body.firstChild);
 
     /* ---- copy, links, discount ---- */
     document.documentElement.setAttribute('data-bf-locale', LOCALE);
@@ -301,20 +395,24 @@
     }
 
     /* ---- show / hide ---- */
+    var unpush = null;
     function show() {
       banner.style.display = 'block';
       void banner.offsetHeight;                 // reflow, so the slide animates
       banner.classList.add(CONFIG.visibleClass);
+      if (!unpush && bannerIsInFlow(banner)) unpush = pushPinned(banner, findPinned(banner));
     }
+    function releasePush() { if (unpush) { unpush(); unpush = null; } }
     function hideAnimated() {
       banner.classList.remove(CONFIG.visibleClass);
-      setTimeout(function () { banner.style.display = 'none'; }, CONFIG.hideDelay);
+      setTimeout(function () { banner.style.display = 'none'; releasePush(); }, CONFIG.hideDelay);
       if (timer) { clearInterval(timer); timer = null; }
     }
     function hideNow() {
       if (timer) { clearInterval(timer); timer = null; }
       banner.classList.remove(CONFIG.visibleClass);
       banner.style.display = 'none';
+      releasePush();
     }
 
     var close = banner.querySelector('#bottom-banner-close');
@@ -333,7 +431,7 @@
   }
 
   /* =====================================================================
-     8 · Boot
+     9 · Boot
      ===================================================================== */
   if (qs.get('reset') === '1') { memDismissed = false; lsDel(CONFIG.storageKey); }
 
